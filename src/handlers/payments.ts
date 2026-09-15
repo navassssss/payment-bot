@@ -23,7 +23,8 @@ export function setupPaymentsHandler(bot: Bot<BotContext>) {
         product.description || product.name,
         payload,
         "XTR",
-        [{ label: "Price", amount: product.price_stars }]
+        [{ label: "Price", amount: product.price_stars }],
+        { provider_token: "" }  // empty string required for Telegram Stars
       );
     } catch (error) {
       console.error("Buy handler error:", error);
