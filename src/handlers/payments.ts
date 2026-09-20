@@ -1,6 +1,7 @@
 import { Bot } from 'grammy';
 import { BotContext } from '../bot';
 import { productQueries, paymentQueries, purchaseQueries } from '../db/queries';
+import { config } from '../config';
 
 export function setupPaymentsHandler(bot: Bot<BotContext>) {
   bot.callbackQuery(/^buy:(.+)$/, async (ctx) => {
@@ -105,6 +106,13 @@ export function setupPaymentsHandler(bot: Bot<BotContext>) {
       try {
         await ctx.reply("✅ Payment successful!\n\nYour file is below.");
         await ctx.replyWithDocument(product.telegram_file_id);
+        
+        const userIdentifier = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || String(ctx.from.id));
+        await ctx.api.sendMessage(
+          config.ADMIN_TELEGRAM_ID,
+          `💰 <b>New Purchase!</b>\nUser: ${userIdentifier}\nProduct: <b>${product.name}</b>\nAmount: <b>${paymentInfo.total_amount} ⭐️</b>`,
+          { parse_mode: 'HTML' }
+        ).catch(e => console.error("Failed to notify admin:", e));
       } catch (deliveryError) {
         console.error("File delivery error:", deliveryError);
         await ctx.reply("Your payment was received, but file delivery failed. Please check /purchases or contact support.");
