@@ -1,4 +1,4 @@
-import { Bot } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import { BotContext } from '../bot';
 import { productQueries, paymentQueries, purchaseQueries } from '../db/queries';
 import { config } from '../config';
@@ -111,7 +111,10 @@ export function setupPaymentsHandler(bot: Bot<BotContext>) {
         await ctx.api.sendMessage(
           config.ADMIN_TELEGRAM_ID,
           `💰 <b>New Purchase!</b>\nUser: ${userIdentifier}\nProduct: <b>${product.name}</b>\nAmount: <b>${paymentInfo.total_amount} ⭐️</b>`,
-          { parse_mode: 'HTML' }
+          {
+            parse_mode: 'HTML',
+            reply_markup: new InlineKeyboard().text('↩️ Refund', `admin:ref:${payment.id}`)
+          }
         ).catch(e => console.error("Failed to notify admin:", e));
       } catch (deliveryError) {
         console.error("File delivery error:", deliveryError);

@@ -19,6 +19,8 @@ export interface Payment {
   telegram_charge_id: string;
   amount_stars: number;
   created_at: string;
+  products?: Product;
+  purchases?: Purchase | null;
 }
 
 export interface Purchase {
@@ -29,4 +31,18 @@ export interface Purchase {
   username: string | null;
   first_name: string | null;
   purchased_at: string;
+  products?: Product;
+  payments?: Payment;
+}
+
+export interface Refund {
+  id: string;
+  payment_id: string;
+  telegram_user_id: number;
+  telegram_charge_id: string;
+  amount_stars: number;
+  reason: string | null;
+  refunded_at: string;
+  payments?: Payment;
+  products?: Product;
 }

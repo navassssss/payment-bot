@@ -6,7 +6,8 @@ export type AdminStep =
   | 'WAITING_FOR_EDIT_NAME'
   | 'WAITING_FOR_EDIT_DESC'
   | 'WAITING_FOR_EDIT_PRICE'
-  | 'WAITING_FOR_REPLACE_FILE';
+  | 'WAITING_FOR_REPLACE_FILE'
+  | 'WAITING_FOR_REFUND_SEARCH';
 
 export interface AdminState {
   step: AdminStep;

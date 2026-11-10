@@ -27,14 +27,14 @@ export function setupStartHandler(bot: Bot<BotContext>) {
   });
 
   bot.command('help', async (ctx) => {
-    await ctx.reply("Welcome to Starbot!\n\nUse /start or /shop to browse our files.\nUse /purchases to view your purchased files.\n\nFor support, use /paysupport.");
+    await ctx.reply("Welcome to Starbot!\n\nUse /start or /shop to browse our files.\nUse /purchases to view your purchased files.\n\nFor support and refunds, use /paysupport.");
   });
 
   bot.command('terms', async (ctx) => {
-    await ctx.reply("Terms of Service\n\nAll purchases are final. Digital goods are delivered immediately via Telegram upon successful payment.");
+    await ctx.reply("Terms of Service\n\nDigital goods are delivered immediately via Telegram upon successful payment.\nIf you experience issues with your file or need assistance, contact support via /paysupport.");
   });
 
   bot.command('paysupport', async (ctx) => {
-    await ctx.reply("Payment Support\n\nIf you have issues with a purchase, please check /purchases first. If your file is missing, contact the administrator.");
+    await ctx.reply("Payment Support & Refunds\n\n• If you have issues with a purchase, please check /purchases first.\n• If your file is corrupted, missing, or you need a refund, contact the administrator.\n• For refund requests, please provide your Telegram user ID or the transaction receipt received from Telegram.\n• Approved refunds are credited directly back to your Telegram Stars balance.");
   });
 }
