@@ -7,19 +7,32 @@ export function setupStartHandler(bot: Bot<BotContext>) {
     try {
       const products = await productQueries.getActiveProducts();
       
+      const keyboard = new InlineKeyboard();
+
       if (products.length === 0) {
-        await ctx.reply("🛍 Welcome to Starbot\n\nThere are no active files available right now.");
+        keyboard.text('↩️ Request a Refund', 'user:apply_refund');
+        await ctx.reply(
+          "🛍 <b>Welcome to Starbot</b>\n\nThere are no active files available right now.\n\nNeed assistance or a refund for a previous purchase?",
+          { reply_markup: keyboard, parse_mode: 'HTML' }
+        );
         return;
       }
 
-      let text = "🛍 Welcome to Starbot\n\n📦 Available Files:\n\n";
-      const keyboard = new InlineKeyboard();
+      let text = 
+        "🛍 <b>Welcome to Starbot</b>\n\n" +
+        "📦 <b>Available Files:</b>\n" +
+        "Select a file below to purchase with Telegram Stars.\n\n" +
+        "Need help or want to refund a past purchase? Use the buttons below:";
 
       products.forEach((p) => {
         keyboard.text(`[${p.name} — ⭐${p.price_stars}]`, `product:${p.id}`).row();
       });
 
-      await ctx.reply(text, { reply_markup: keyboard });
+      keyboard
+        .text('📦 My Purchases', 'user:purchases_btn')
+        .text('↩️ Request Refund', 'user:apply_refund');
+
+      await ctx.reply(text, { reply_markup: keyboard, parse_mode: 'HTML' });
     } catch (error) {
       console.error("Start handler error:", error);
       await ctx.reply("An error occurred. Please try again later.");

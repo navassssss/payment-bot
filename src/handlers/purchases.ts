@@ -31,12 +31,13 @@ export function setupPurchasesHandler(bot: Bot<BotContext>) {
     }
   });
 
-  bot.callbackQuery('user:back_to_purchases', async (ctx) => {
+  bot.callbackQuery(['user:purchases_btn', 'user:back_to_purchases'], async (ctx) => {
     try {
       const purchases = await purchaseQueries.getPurchasesByUser(ctx.from!.id);
 
       if (!purchases || purchases.length === 0) {
-        await ctx.editMessageText("You haven't purchased any files yet.");
+        const keyboard = new InlineKeyboard().text('⬅️ Back to Shop', 'back_to_shop');
+        await ctx.editMessageText("You haven't purchased any files yet.", { reply_markup: keyboard });
         await ctx.answerCallbackQuery();
         return;
       }
@@ -50,7 +51,8 @@ export function setupPurchasesHandler(bot: Bot<BotContext>) {
         }
       });
 
-      keyboard.text('↩️ Request a Refund', 'user:apply_refund');
+      keyboard.text('↩️ Request a Refund', 'user:apply_refund').row();
+      keyboard.text('⬅️ Back to Shop', 'back_to_shop');
 
       await ctx.editMessageText(text, { reply_markup: keyboard, parse_mode: 'HTML' });
       await ctx.answerCallbackQuery();

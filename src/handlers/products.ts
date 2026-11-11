@@ -36,14 +36,23 @@ export function setupProductsHandler(bot: Bot<BotContext>) {
     try {
       const products = await productQueries.getActiveProducts();
       
-      let text = "🛍 Welcome to Starbot\n\n📦 Available Files:\n\n";
+      let text = 
+        "🛍 <b>Welcome to Starbot</b>\n\n" +
+        "📦 <b>Available Files:</b>\n" +
+        "Select a file below to purchase with Telegram Stars.\n\n" +
+        "Need help or want to refund a past purchase? Use the buttons below:";
+
       const keyboard = new InlineKeyboard();
 
       products.forEach((p) => {
         keyboard.text(`[${p.name} — ⭐${p.price_stars}]`, `product:${p.id}`).row();
       });
 
-      await ctx.editMessageText(text, { reply_markup: keyboard });
+      keyboard
+        .text('📦 My Purchases', 'user:purchases_btn')
+        .text('↩️ Request Refund', 'user:apply_refund');
+
+      await ctx.editMessageText(text, { reply_markup: keyboard, parse_mode: 'HTML' });
       await ctx.answerCallbackQuery();
     } catch (error) {
       console.error("Back to shop error:", error);
