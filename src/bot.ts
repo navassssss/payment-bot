@@ -2,10 +2,12 @@ import { Bot, session, Context } from 'grammy';
 import { config } from './config';
 import { setupHandlers } from './handlers';
 import { AdminState } from './types/admin-state';
+import { UserState } from './types';
 
 export interface BotContext extends Context {
   session: {
     adminState?: AdminState;
+    userState?: UserState;
   };
 }
 

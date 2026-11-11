@@ -27,14 +27,20 @@ export function setupStartHandler(bot: Bot<BotContext>) {
   });
 
   bot.command('help', async (ctx) => {
-    await ctx.reply("Welcome to Starbot!\n\nUse /start or /shop to browse our files.\nUse /purchases to view your purchased files.\n\nFor support and refunds, use /paysupport.");
+    await ctx.reply("Welcome to Starbot!\n\n• Use /start or /shop to browse our files.\n• Use /purchases to view your purchased files.\n• Use /refund to apply for a refund on any eligible purchase.\n• For questions or support, use /paysupport.");
   });
 
   bot.command('terms', async (ctx) => {
-    await ctx.reply("Terms of Service\n\nDigital goods are delivered immediately via Telegram upon successful payment.\nIf you experience issues with your file or need assistance, contact support via /paysupport.");
+    await ctx.reply("Terms of Service\n\nDigital goods are delivered immediately via Telegram upon successful payment.\nIf you experience issues with your file or need assistance, you can request a refund using /refund or contact /paysupport.");
   });
 
   bot.command('paysupport', async (ctx) => {
-    await ctx.reply("Payment Support & Refunds\n\n• If you have issues with a purchase, please check /purchases first.\n• If your file is corrupted, missing, or you need a refund, contact the administrator.\n• For refund requests, please provide your Telegram user ID or the transaction receipt received from Telegram.\n• Approved refunds are credited directly back to your Telegram Stars balance.");
+    await ctx.reply(
+      "Payment Support & Refunds\n\n" +
+      "• If you have issues with a purchase, check /purchases first.\n" +
+      "• You can apply for a refund directly using /refund or via the [Request Refund] button in /purchases.\n" +
+      "• Once submitted, the administrator will review your application.\n" +
+      "• Approved refunds are credited directly back to your Telegram Stars balance."
+    );
   });
 }

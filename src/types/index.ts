@@ -46,3 +46,21 @@ export interface Refund {
   payments?: Payment;
   products?: Product;
 }
+
+export interface RefundRequest {
+  id: string;
+  payment_id: string;
+  telegram_user_id: number;
+  product_id: string;
+  reason: string | null;
+  status: 'pending' | 'approved' | 'declined';
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export type UserStep = 'WAITING_FOR_REFUND_REASON';
+
+export interface UserState {
+  step?: UserStep;
+  payload?: Record<string, any>;
+}

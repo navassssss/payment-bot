@@ -188,18 +188,19 @@ export const purchaseQueries = {
     return data;
   },
 
-  async getPurchasesByUser(userId: number) {
+  async getPurchasesByUser(userId: number): Promise<(Purchase & { products?: Product; payments?: Payment })[]> {
     const { data, error } = await supabase
       .from('purchases')
       .select(`
         *,
-        products (*)
+        products (*),
+        payments (*)
       `)
       .eq('telegram_user_id', userId)
       .order('purchased_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    return (data as any) || [];
   },
 
   async getBuyersByProduct(productId: string) {
@@ -379,5 +380,61 @@ export const refundQueries = {
       }));
 
     return refundedPayments;
+  }
+};
+
+export const refundRequestQueries = {
+  async createRequest(req: {
+    payment_id: string;
+    telegram_user_id: number;
+    product_id: string;
+    reason: string | null;
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_requests')
+        .insert({
+          payment_id: req.payment_id,
+          telegram_user_id: req.telegram_user_id,
+          product_id: req.product_id,
+          reason: req.reason,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch {
+      // Table may not exist yet
+    }
+    return null;
+  },
+
+  async getPendingByPaymentId(paymentId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('refund_requests')
+        .select('*')
+        .eq('payment_id', paymentId)
+        .eq('status', 'pending')
+        .single();
+      if (!error && data) return data;
+    } catch {
+      // Ignore
+    }
+    return null;
+  },
+
+  async updateStatus(paymentId: string, status: 'approved' | 'declined') {
+    try {
+      await supabase
+        .from('refund_requests')
+        .update({
+          status,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('payment_id', paymentId);
+    } catch {
+      // Ignore
+    }
   }
 };

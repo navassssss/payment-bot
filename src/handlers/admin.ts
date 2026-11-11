@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import { BotContext } from '../bot';
 import { isAdmin } from '../utils/auth';
-import { productQueries, purchaseQueries, paymentQueries, refundQueries } from '../db/queries';
+import { productQueries, purchaseQueries, paymentQueries, refundQueries, refundRequestQueries } from '../db/queries';
 
 export function setupAdminHandler(bot: Bot<BotContext>) {
   function getAdminMenuKeyboard() {
@@ -103,10 +103,29 @@ export function setupAdminHandler(bot: Bot<BotContext>) {
 
   bot.command('refund', async (ctx) => {
     if (!isAdmin(ctx.from?.id!)) {
-      await ctx.reply(
-        "Payment Support & Refunds\n\n" +
-        "To request a refund, please contact the administrator via /paysupport with your receipt or payment charge ID."
-      );
+      try {
+        const purchases = await purchaseQueries.getPurchasesByUser(ctx.from!.id);
+        if (!purchases || purchases.length === 0) {
+          await ctx.reply("You do not have any purchases eligible for a refund.");
+          return;
+        }
+
+        let text = "↩️ <b>Apply for a Refund</b>\n\nSelect which purchased file you want to request a refund for:";
+        const keyboard = new InlineKeyboard();
+
+        purchases.forEach((p) => {
+          if (p.products) {
+            const stars = p.payments?.amount_stars || p.products.price_stars;
+            keyboard.text(`[${p.products.name} — ⭐${stars}]`, `user:req_refund:${p.id}`).row();
+          }
+        });
+
+        keyboard.text('❌ Cancel', 'user:cancel_refund');
+        await ctx.reply(text, { reply_markup: keyboard, parse_mode: 'HTML' });
+      } catch (err) {
+        console.error("User refund command error:", err);
+        await ctx.reply("Error loading your purchases for refund.");
+      }
       return;
     }
 
@@ -372,6 +391,132 @@ export function setupAdminHandler(bot: Bot<BotContext>) {
     } catch (err) {
       console.error(err);
       await ctx.answerCallbackQuery({ text: "Error loading refund history" });
+    }
+  });
+
+  bot.callbackQuery(/^admin:appr_req:(.+)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return;
+    const paymentId = ctx.match[1];
+
+    try {
+      const payment = await paymentQueries.getPaymentById(paymentId);
+      if (!payment) {
+        await ctx.answerCallbackQuery({ text: "Payment not found.", show_alert: true });
+        return;
+      }
+
+      const alreadyRefunded = await refundQueries.isRefunded(payment.id);
+      if (alreadyRefunded) {
+        await ctx.answerCallbackQuery({ text: "This payment was already refunded.", show_alert: true });
+        return;
+      }
+
+      await ctx.answerCallbackQuery({ text: "Processing refund with Telegram..." });
+
+      // Call Telegram Star refund API
+      try {
+        await ctx.api.refundStarPayment(Number(payment.telegram_user_id), payment.telegram_charge_id);
+      } catch (tgError: any) {
+        const errMsg = tgError?.message || String(tgError);
+        console.error("Telegram refundStarPayment failed:", tgError);
+
+        if (!errMsg.includes('CHARGE_ALREADY_REFUNDED')) {
+          await ctx.reply(
+            `❌ <b>Telegram Refund Failed</b>\n\n<code>${errMsg}</code>`,
+            { parse_mode: 'HTML' }
+          );
+          return;
+        }
+      }
+
+      // Record refund and revoke file access
+      await refundQueries.recordRefund({
+        payment_id: payment.id,
+        telegram_user_id: Number(payment.telegram_user_id),
+        telegram_charge_id: payment.telegram_charge_id,
+        amount_stars: payment.amount_stars,
+        reason: 'User refund request approved by admin'
+      });
+
+      // Update refund request status
+      await refundRequestQueries.updateStatus(payment.id, 'approved');
+
+      // Send confirmation to user
+      try {
+        await ctx.api.sendMessage(
+          Number(payment.telegram_user_id),
+          `✅ <b>Refund Request Approved!</b>\n\n` +
+          `Your refund request for <b>${payment.products?.name || 'File'}</b> has been approved.\n` +
+          `⭐ <b>${payment.amount_stars} Stars</b> have been credited back to your Telegram Stars balance.`,
+          { parse_mode: 'HTML' }
+        );
+      } catch (notifyErr) {
+        console.warn("Could not notify user of approved refund:", notifyErr);
+      }
+
+      const userDisplay = payment.purchases?.username 
+        ? `@${payment.purchases.username}` 
+        : (payment.purchases?.first_name || `User ${payment.telegram_user_id}`);
+
+      // Update Admin message
+      await ctx.editMessageText(
+        `✅ <b>Refund Approved & Completed!</b>\n\n` +
+        `👤 <b>User:</b> ${userDisplay} (<code>${payment.telegram_user_id}</code>)\n` +
+        `📦 <b>Product:</b> <b>${payment.products?.name || 'File'}</b>\n` +
+        `⭐ <b>Amount:</b> ⭐${payment.amount_stars} Stars refunded.\n` +
+        `📦 File access revoked.`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (err) {
+      console.error("Approve refund error:", err);
+      await ctx.reply("❌ Error approving refund.");
+    }
+  });
+
+  bot.callbackQuery(/^admin:decl_req:(.+)$/, async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return;
+    const paymentId = ctx.match[1];
+
+    try {
+      const payment = await paymentQueries.getPaymentById(paymentId);
+      if (!payment) {
+        await ctx.answerCallbackQuery({ text: "Payment not found.", show_alert: true });
+        return;
+      }
+
+      await ctx.answerCallbackQuery({ text: "Declining request..." });
+
+      // Update refund request status
+      await refundRequestQueries.updateStatus(payment.id, 'declined');
+
+      // Notify user
+      try {
+        await ctx.api.sendMessage(
+          Number(payment.telegram_user_id),
+          `❌ <b>Refund Request Declined</b>\n\n` +
+          `Your refund request for <b>${payment.products?.name || 'File'}</b> was reviewed and declined by the administrator.\n` +
+          `For questions, please contact /paysupport.`,
+          { parse_mode: 'HTML' }
+        );
+      } catch (notifyErr) {
+        console.warn("Could not notify user of declined refund:", notifyErr);
+      }
+
+      const userDisplay = payment.purchases?.username 
+        ? `@${payment.purchases.username}` 
+        : (payment.purchases?.first_name || `User ${payment.telegram_user_id}`);
+
+      // Update Admin message
+      await ctx.editMessageText(
+        `❌ <b>Refund Request Declined</b>\n\n` +
+        `👤 <b>User:</b> ${userDisplay} (<code>${payment.telegram_user_id}</code>)\n` +
+        `📦 <b>Product:</b> <b>${payment.products?.name || 'File'}</b>\n` +
+        `⭐ <b>Amount:</b> ⭐${payment.amount_stars} Stars`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (err) {
+      console.error("Decline refund error:", err);
+      await ctx.reply("❌ Error declining refund.");
     }
   });
 
